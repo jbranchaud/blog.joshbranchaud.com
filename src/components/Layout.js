@@ -206,9 +206,10 @@ const Layout = ({ children, customSEO }) => {
         <Footer>
           &copy; 2019 by Josh Branchaud. All rights reserved. <br />
           <a href="https://github.com/jbranchaud">GitHub</a>{' | '}
-          <a href="https://twitter.com/jbrancha">Twitter</a>
+          <a href="https://twitter.com/jbrancha">Twitter</a>{' | '}
+          <a href="https://www.youtube.com/channel/UCa0tJguRNbU6I8OO3nUvXxQ?view_as=subscriber">YouTube</a>
           <br />
-          <span>Last build: {buildTime}</span>
+          <span>Built with <a href="https://github.com/gatsbyjs/gatsby">Gatsby</a> and <a href="https://github.com/LekoArts/gatsby-starter-minimal-blog">MinimalBlog</a></span>
         </Footer>
       </>
     </ThemeProvider>
