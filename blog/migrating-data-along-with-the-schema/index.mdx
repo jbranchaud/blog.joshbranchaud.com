@@ -1,0 +1,230 @@
+---
+data: "2019-05-22"
+title: "Migrating Data along with the Schema"
+categories:
+  - Rails
+  - PostgreSQL
+---
+
+It all started with wanting to move a column from one table to another. The
+schema changes were straightforward enough. We wanted to keep the data as well,
+so that too needed to be migrated. We wrote the migration, deployed the code,
+and then found ourselves scratching our heads. Why was our new column empty? In
+this post I'll breakdown what happened and how we fixed it. At the end I'll
+suggest a couple other approches we could take for writing more robust
+migrations in Rails.
+
+### An Example
+
+Let's set up a small example that will help illustrate what happened. We have a
+[bookshelf app](https://github.com/jbranchaud/rails-bookshelf-example) that
+allows us to track authors and books.
+
+Here is the schema for our authors table:
+
+```sql
+> \d authors
+                            Table "public.authors"
+   Column   |            Type             |             Modifiers
+------------+-----------------------------+------------------------------------
+ id         | uuid                        | not null default gen_random_uuid()
+ name       | character varying           | not null
+ genre      | character varying           | not null
+ created_at | timestamp without time zone | not null
+ updated_at | timestamp without time zone | not null
+Indexes:
+    "authors_pkey" PRIMARY KEY, btree (id)
+Referenced by:
+    TABLE "books" CONSTRAINT "fk_rails_53d51ce16a" FOREIGN KEY (author_id) REFERENCES authors(id)
+```
+
+Here is the schema for our books table:
+
+```sql
+> \d books
+                                Table "public.books"
+      Column      |            Type             |             Modifiers
+------------------+-----------------------------+------------------------------------
+ id               | uuid                        | not null default gen_random_uuid()
+ title            | character varying           | not null
+ publication_year | integer                     | not null
+ created_at       | timestamp without time zone | not null
+ updated_at       | timestamp without time zone | not null
+ author_id        | uuid                        |
+Indexes:
+    "books_pkey" PRIMARY KEY, btree (id)
+    "index_books_on_author_id" btree (author_id)
+Foreign-key constraints:
+    "fk_rails_53d51ce16a" FOREIGN KEY (author_id) REFERENCES authors(id)
+```
+
+We can see that `authors` and `books` are related to one another (notice the
+foreign key constraint on `books`).
+
+We are still coming to understand this bookshelf domain. Along with that we are
+still figuring out our data model. When we first created these columns, we
+naively put the `genre` column on `authors`. This makes it hard to represent
+any authors that have written books across different genres. We'd like to move
+the `genre` column onto `books`. This is a small schema change. We'll add a
+`genre` column to books (and let's leave the `genre` column on `authors` for
+now).
+
+The app is live and already has some data consisting of a number of authors and
+books. That data will need to get migrated along with the schema change.
+
+Here is the `up` part of our migration:
+
+```ruby
+  # assume GenericAuthor and GenericBook have been defined above
+  def up
+    add_column :books, :genre, :string
+
+    GenericAuthor.find_each do |author|
+      book = GenericBook.find_by(author_id: author.id)
+
+      puts "Moving #{author.genre} from #{author.name} to #{book.title}"
+
+      update_attrs = { genre: author.genre }
+      book.update!(update_attrs)
+    end
+
+    puts "\n### Genres have supposedly been migrated ###\n\n"
+
+    GenericBook.find_each do |book|
+      puts "The genre of #{book.title} is #{book.genre || 'ø'}"
+    end
+  end
+```
+
+Here is what happens when we run this migration against our live database:
+
+```
+$ rails db:forward STEP=1
+== 20190518214106 MoveGenreFromAuthorsToBooks: migrating ======================
+-- add_column(:books, :genre, :string)
+   -> 0.0009s
+Moving science fiction from Octavia Butler to Fledgling
+Moving essay from David Sedaris to Me Talk Pretty One Day
+Moving technical from Martin Fowler to Refactoring
+
+### Genres have supposedly been migrated ###
+
+The genre of Refactoring is ø
+The genre of Fledgling is ø
+The genre of Me Talk Pretty One Day is ø
+== 20190518214106 MoveGenreFromAuthorsToBooks: migrated (0.0209s) =============
+```
+
+As we can see the migration runs without error, but it has not done what we
+intended or expected — the genre data that we attempted to migrate to the books
+table is nowhere to be seen, those columns have been left as null. We have
+silently lost data, good thing we didn't destroy the original genre column yet.
+
+### Why did this happen?
+
+It has to do with an optimization built into Rails' default settings -- **schema
+caching**.
+
+It is expensive for Rails to load and check the current schema from the
+database on every database interaction, so it caches a representation of the
+schema with all table and column information. This cache is how `ActiveRecord`
+knows what attributes a given model supports without making a round-trip to the
+databse.
+
+Despite having added the `genre` column to `books` in the first part of our
+migration, Rails believes — according to its cache — that there is no `genre`
+column on `books`. As a result, when we call `update!` with attributes that
+Rails sees as irrelevant to the `books` table, it happily ignores them.
+
+### How can we ensure our migrations do what we expect?
+
+We need to convince Rails that the `books` table does in fact have a `genre`
+column. We can do this by asking `Rails` to go grab a fresh list of columns for
+the `books` table. There is a method for this
+[`reset_column_information`](https://www.notion.so/jbranchaud/Data-Migration-Troubles-61cb4b49b88e4e2680b63254a082b4ef#a3966b545e6340bcaba41b64a1aa6179).
+Here is an updated migration:
+
+```ruby
+  def up
+    add_column :books, :genre, :string
+
+    GenericBook.reset_column_information
+
+    GenericAuthor.find_each do |author|
+      book = GenericBook.find_by(author_id: author.id)
+
+      puts "Moving #{author.genre} from #{author.name} to #{book.title}"
+
+      update_attrs = { genre: author.genre }
+      book.update!(update_attrs)
+    end
+
+    puts "\n### Genres have supposedly been migrated ###\n\n"
+
+    GenericBook.find_each do |book|
+      puts "The genre of #{book.title} is #{book.genre || 'ø'}"
+    end
+  end
+```
+
+By placing this call to reset_column_information in between our schema change
+and our data changes, we ensure Rails has a valid cache of the column
+information for our books table. If we rerun this migration now, we'll see the
+output we were expecting:
+
+```
+$ rails db:forward STEP=1
+== 20190518214106 MoveGenreFromAuthorsToBooks: migrating ======================
+-- add_column(:books, :genre, :string)
+   -> 0.0013s
+Moving science fiction from Octavia Butler to Fledgling
+Moving essay from David Sedaris to Me Talk Pretty One Day
+Moving technical from Martin Fowler to Refactoring
+
+### Genres have supposedly been migrated ###
+
+The genre of Refactoring is technical
+The genre of Fledgling is science fiction
+The genre of Me Talk Pretty One Day is essay
+== 20190518214106 MoveGenreFromAuthorsToBooks: migrated (0.0318s) =============
+```
+
+That's it -- problem solved!
+
+### What else can we do?
+
+While adding a single line to our migration is certainly a minimal and
+straightforward solution, it isn't the only option available to us. Without
+going into too much detail, I'll suggest a couple other methodologies that
+should also help avoid this scenario.
+
+- Migrations written in raw SQL will not suffer from this caching issue because
+the SQL queries are run directly against the database instead of relying on
+Arel to generate the SQL that will be run against the database. Personally,
+this is my preferred approach. It only makes sense for teams where everyone
+prefers writing SQL.
+
+- Keep schema and data migrations separate. With this approach, you'd have one
+migration make the schema change. You'd then follow it with another migration
+to make the data change. I don't have a deep understanding of when Rails
+invalidates parts of the schema cache, but my guess is that it would get the
+latest changes between migrations.
+
+- Keep data changes out of your migrations. This approach says that if you are
+going to keep your dschema and data changes separate, you should keep them
+totally separate. With this approach, you might choose to write one-off Rake
+tasks or a tool like
+[after_party](https://github.com/theSteveMitchell/after_party) to manage data
+migrations outside the standard migration process.
+
+All of these are valid approaches -- you'll have to evaluate what is best for
+you and your team.
+
+If you want to get some hands-on experience with this issue, check out the [example repository](https://github.com/jbranchaud/rails-bookshelf-example).
+
+### Resources
+
+- Example repository [https://github.com/jbranchaud/rails-bookshelf-example](https://github.com/jbranchaud/rails-bookshelf-example)
+- `reset_column_information` [https://api.rubyonrails.org/classes/ActiveRecord/ModelSchema/ClassMethods.html#method-i-reset_column_information](https://api.rubyonrails.org/classes/ActiveRecord/ModelSchema/ClassMethods.html#method-i-reset_column_information)
+- Rails Schema Cache [https://kirshatrov.com/2016/12/13/schema-cache/](https://kirshatrov.com/2016/12/13/schema-cache/)
+- How to write complex migrations in Rails [https://makandracards.com/makandra/15575-how-to-write-complex-migrations-in-rails](https://makandracards.com/makandra/15575-how-to-write-complex-migrations-in-rails)
