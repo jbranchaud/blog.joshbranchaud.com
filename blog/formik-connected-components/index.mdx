@@ -1,0 +1,81 @@
+---
+date: "2019-05-25"
+title: "Formik Connected Components"
+categories:
+  - React
+  - Formik
+  - JavaScript
+---
+
+[Formik](https://jaredpalmer.com/formik/) comes with a [`connect()`
+HOC](https://jaredpalmer.com/formik/docs/api/connect) that uses the [context
+API](https://reactjs.org/docs/context.html) as a way of connecting to disparate
+form elements. This means that form data, change handlers, touched and error
+data, etc. can be easily accessed without a lot of [prop
+drilling](https://kentcdodds.com/blog/prop-drilling).
+
+Any component that lives somewhere downstream in the tree of a Formik form can
+use `connect()`.
+
+Here is an example of a connected input component:
+
+```jsx
+import { connect, getIn } from "formik";
+
+const Input = ({ type = "text", name, label, formik }) => {
+  return (
+    <React.Fragment>
+      <label htmlFor={name}>{label}:</label>{" "}
+      <input
+        type={type}
+        onChange={formik.handleChange}
+        onBlur={formik.handleBlur}
+        value={getIn(formik.values, name)}
+        name={name}
+        id={name}
+      />
+    </React.Fragment>
+  );
+};
+
+export default connect(Input);
+```
+
+This `Input` component is wrapped in `connect` which means it gets the `formik`
+prop. `formik` contains everything we mentioned above and more -- all the context
+you'll need to make your form element work.
+
+Because `value`, `handleChange`, and `handleBlur` are provided, uses of this
+component only need to think about the `name` and `label` props.
+
+```jsx
+const BasicForm = ({ onSubmit }) => (
+  <div>
+    <h1>Basic Form</h1>
+    <Formik
+      initialValues={{ firstName: "Liz", lastName: "Lemon" }}
+      onSubmit={onSubmit}
+      render={props => (
+        <form onSubmit={props.handleSubmit}>
+          <Input name="firstName" label="First Name" />
+          <Input name="lastName" label="Last Name" />
+          <button type="submit">Submit</button>
+        </form>
+      )}
+    />
+  </div>
+);
+```
+
+Our `Input` components have a small interface making them easier to use.
+Furthermore, because they are self-connected to their parent Formik form, we
+can shuffle them around with minimal fuss. For instance, imagine our form has
+grown and we want to organize some of the input elements in a _personal
+information_ section of the form. We could split out a component for this
+without too many changes. Our new `PersonalInformation` component doesn't need
+to receive and pass down `values`, `handleChange`, etc. because the `Input`
+componets have that covered.
+
+If I've piqued your interest in Formik connected components, you can check out
+this [live example](https://codesandbox.io/s/quizzical-hill-7xlwi) to give it a
+try.
