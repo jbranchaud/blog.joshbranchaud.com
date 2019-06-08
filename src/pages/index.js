@@ -1,9 +1,9 @@
-import React from 'react';
-import PropTypes from 'prop-types';
-import { Link, graphql } from 'gatsby';
-import styled from 'styled-components';
+import React from 'react'
+import PropTypes from 'prop-types'
+import { Link, graphql } from 'gatsby'
+import styled from 'styled-components'
 
-import { Layout, Article, Wrapper, Button, SectionTitle } from '../components';
+import { Layout, Article, Wrapper, Button, SectionTitle } from '../components'
 
 const Content = styled.div`
   grid-column: 2;
@@ -17,7 +17,7 @@ const Content = styled.div`
     padding: 2rem 1.5rem;
   }
   overflow: hidden;
-`;
+`
 
 const Hero = styled.div`
   grid-column: 2;
@@ -39,19 +39,22 @@ const Hero = styled.div`
       font-size: 1.25rem;
     }
   }
-`;
+`
 
-const IndexPage = ({ data: { allMdx: { edges: postEdges } } }) =>
+const IndexPage = ({
+  data: {
+    allMdx: { edges: postEdges },
+  },
+}) => (
   <Layout>
     <Wrapper>
       <Hero>
         <h1>Code Words</h1>
         <p>
-          I&apos;m Josh Branchaud, a Senior Software Developer and Consultant
-          focused primarily on web development, specializing in Ruby on Rails,
-          React, and PostgreSQL.
+          I&apos;m Josh Branchaud, a Senior Software Developer and Consultant focused primarily on web development,
+          specializing in Ruby on Rails, React, and PostgreSQL.
         </p>
-        {/*<Link to="/contact">
+        {/* <Link to="/contact">
           <Button big>
             <svg
               width="1792"
@@ -63,11 +66,11 @@ const IndexPage = ({ data: { allMdx: { edges: postEdges } } }) =>
             </svg>
             Contact
           </Button>
-        </Link>*/}
+        </Link> */}
       </Hero>
       <Content>
         <SectionTitle>Latest posts</SectionTitle>
-        {postEdges.map(post =>
+        {postEdges.map(post => (
           <Article
             title={post.node.frontmatter.title}
             date={post.node.frontmatter.date}
@@ -77,12 +80,13 @@ const IndexPage = ({ data: { allMdx: { edges: postEdges } } }) =>
             categories={post.node.frontmatter.categories}
             key={post.node.fields.slug}
           />
-        )}
+        ))}
       </Content>
     </Wrapper>
-  </Layout>;
+  </Layout>
+)
 
-export default IndexPage;
+export default IndexPage
 
 IndexPage.propTypes = {
   data: PropTypes.shape({
@@ -90,7 +94,7 @@ IndexPage.propTypes = {
       edges: PropTypes.array.isRequired,
     }),
   }).isRequired,
-};
+}
 
 export const IndexQuery = graphql`
   query IndexQuery {
@@ -111,4 +115,4 @@ export const IndexQuery = graphql`
       }
     }
   }
-`;
+`
