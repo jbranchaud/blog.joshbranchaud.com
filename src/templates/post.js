@@ -7,6 +7,7 @@ import MDXRenderer from 'gatsby-mdx/mdx-renderer'
 
 import { Layout, Wrapper, Header, Subline, SEO, PrevNext } from '../components'
 import config from '../../config'
+import headerImage from '../../static/images/header.png'
 
 const Content = styled.article`
   grid-column: 2;
@@ -50,6 +51,16 @@ const PostContent = styled.div`
   margin-top: 4rem;
 `
 
+const HeaderImage = styled.img`
+  max-width: 500px;
+  @media (max-width: ${props => props.theme.breakpoints.tablet}) {
+    max-width: 400px;
+  }
+  @media (max-width: ${props => props.theme.breakpoints.phone}) {
+    max-width: 300px;
+  }
+`
+
 const Post = ({ pageContext: { slug, prev, next }, data: { mdx: postNode } }) => {
   const post = postNode.frontmatter
 
@@ -58,7 +69,9 @@ const Post = ({ pageContext: { slug, prev, next }, data: { mdx: postNode } }) =>
       <Wrapper>
         <SEO postPath={slug} postNode={postNode} article />
         <Header>
-          <Link to="/">{config.siteTitle}</Link>
+          <Link to="/">
+            <HeaderImage src={headerImage} />
+          </Link>
         </Header>
         <Content>
           <Title>{post.title}</Title>
