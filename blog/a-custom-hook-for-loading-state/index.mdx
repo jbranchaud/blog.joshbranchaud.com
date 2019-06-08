@@ -1,0 +1,174 @@
+---
+date: "2019-06-08"
+title: "A Custom Hook For Loading State"
+categories:
+  - React
+  - Hooks
+---
+
+I've written a lot of React components over the past couple years that fetch or
+update data with a call to a server. Not knowing how long these server calls
+are going to take, I like to indicate to the user that we are working on it. I
+often do this by putting the component in a loading state.
+
+One of these components might look something like this:
+
+```jsx
+class LoadingStateExample extends React.Component {
+  state = {
+    loading: false
+  };
+
+  setLoading = isLoading => {
+    this.setState({ loading: isLoading });
+  };
+
+  handleSubmit = () => {
+    this.setLoading(true);
+    makeSuccessfulApiCall().finally(() => {
+      this.setLoading(false);
+    });
+  };
+
+  render() {
+    const { loading } = this.state;
+    return (
+      <div>
+        {loading && <p>{"Loading..."}</p>}
+        <button disable={loading} onClick={this.handleSubmit}>
+          Submit
+        </button>
+      </div>
+    );
+  }
+}
+```
+
+A bit of a micro-pattern has emerged across all of these different components.
+Notice the submit handler:
+
+```javascript
+handleSubmit = () => {
+  this.setLoading(true);
+  makeSuccessfulApiCall().finally(() => {
+    this.setLoading(false);
+  });
+};
+```
+
+Here is the micro-pattern in pseudo-code:
+
+```javascript
+handleSubmit = () => {
+  // turn on the component's loading state
+
+  // do a series of (potentially complex) async API interactions
+
+  // when everything is done, turn off the loading state
+};
+```
+
+It's a simple pattern that is highly effective for most API-connected
+components. This is a straightforward way to give a reactive and responsive
+element to our app.
+
+With the advent of the Hooks API, we can tighten up this component a bit:
+
+```jsx
+const HooksLoadingExample = () => {
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = () => {
+    setLoading(true);
+    makeSuccessfulApiCall().finally(() => {
+      setLoading(false);
+    });
+  };
+
+  return (
+    <div>
+      {loading && <p>{"Loading..."}</p>}
+      <button disable={loading} onClick={handleSubmit}>
+        Submit
+      </button>
+    </div>
+  );
+};
+```
+
+Cool, we've used hooks. We are on the bleeding edge of modern React
+development.  We've also shaved about 10 lines of code off the class component
+example. This didn't have any effect on the loading state pattern -- those
+lines of code still look the same.
+
+Not just that, we still have this responsibility to manually manage the loading
+state. We can shift this responsibility, or at least the individual pieces of
+it, into a custom hook.
+
+```javascript
+const useLoadingWrapper = initialLoadingState => {
+  const [loading, setLoading] = useState(initialLoadingState);
+
+  const loadingWrapper = callback => {
+    setLoading(true);
+    return callback().finally(() => {
+      setLoading(false);
+    });
+  };
+
+  return [loading, loadingWrapper];
+};
+```
+
+This is bound to look familiar. It is our loading state pattern, codified as a
+custom React hook. Also, it's just a function. A function we can reuse wherever
+it's needed so that we aren't reinventing the loading state wheel over and over
+across our app.
+
+Here is how we can use the `useLoadingWrapper` hook:
+
+```jsx
+const LoadingWrapperExample = () => {
+  const [loading, loadingWrapper] = useLoadingWrapper(false);
+
+  const handleSubmit = () => {
+    loadingWrapper(makeSuccessfulApiCall);
+  };
+
+  return (
+    <div>
+      {loading && <p>{"Loading..."}</p>}
+      <button disable={loading} onClick={handleSubmit}>
+        Submit
+      </button>
+    </div>
+  );
+};
+```
+
+The above `handleSubmit` function is a bit over-simplified. A more realisitic
+example might look something like this:
+
+```javascript
+const handleSubmit = () => {
+  loadingWrapper(() => {
+    return makeApiCall().then(resp => {
+      const { data } = resp;
+      const someData = data.filter(filterFunc);
+      setData(someData);
+    }).catch(err => {
+      setError(err.message);
+    });
+  });
+};
+```
+
+The `loadingWrapper` allows us to think of our data fetching logic apart from
+managing the loading state. Promise chains are tricky enough. If we can remove
+a slice of logic, that is a win.
+
+If you're interested, you can check out a [live code
+example](https://codesandbox.io/s/compassionate-surf-osctw) on Codesandbox.
+
+I'm just starting to think about the power of custom React hooks. Let me know
+what you think -- I'm on [twitter](https://twitter.com/jbrancha).
