@@ -1,0 +1,89 @@
+---
+date: "2019-06-21"
+title: "An Incomplete Overview of React Loop 2019"
+categories:
+  - React
+  - Conference
+---
+
+Chicago has had a strong and growing React community for many years now. Today
+was React Loop, Chicago's first React conference. It was a single track event
+with a great lineup of speakers. I did my best to capture some notes on what I
+found interesting in each talk. I must admit that I often got caught up in the
+presentations and forgot to jot some things down. You'll want to check out the
+talks when they're available. Until then, here are some highlights.
+
+### Hooks with Michael Jackson
+
+- Set up talk with an analogue between pipeable/composable Unix utilities and composable React Hooks
+- Examples of composing a series of hooks together by keeping their interfaces similar
+- Example of creating middleware (a la Redux middleware) with a hook that uses `useRef`.
+
+### React Testing Library with Elizabeth Funk
+
+- [https://github.com/testing-library/react-testing-library](https://github.com/testing-library/react-testing-library)
+- Moving from testing implementation details with Enzyme to testing the user interface with React Testing Library
+
+### ReactNative with Jesse Weigel
+
+- If your ReactNative elements get turned into mobile views, could you also have them turned in to web views. Then your team could write one codebase to target all the platforms.
+- react-native-web [https://github.com/necolas/react-native-web](https://github.com/necolas/react-native-web)
+- electron [https://github.com/electron/electron](https://github.com/electron/electron)
+- react-native-windows [https://github.com/microsoft/react-native-windows](https://github.com/microsoft/react-native-windows)
+
+### Progressive React with Houssein Djirdeh
+
+- `import React, { lazy } from 'react';`
+- Service Workers, e.g. with workbox [https://developers.google.com/web/tools/workbox/](https://developers.google.com/web/tools/workbox/)
+- pre-rendering of styles with something like puppeteer
+- Chrome's [web.dev](http://web.dev) with performance documentation for React
+- Lighthouse Stack Packs [https://github.com/GoogleChrome/lighthouse-stack-packs](https://github.com/GoogleChrome/lighthouse-stack-packs)
+
+### Typescript: Seeing Past the Hype with Matthew Gerstman
+
+- Realistic about lots of pain points — TS is not sound (esp. with the `any` type), many React concepts are really hard to type (e.g. dispatch, thunk)
+- Using TypeScript to enforce constraints on the engineering time (e.g. prevent certain lodash imports, roll out with React 16.8 while keeping the types at 16.7 so that devs can't use hooks until we are sure that the app works in prod with 16.8)
+
+### A React Developer's Guide to Tech Interviews with Adrianna Valdivia
+
+- Overview of many concepts you'll want to have a grasp of going into a React/JavaScript interview
+- Lots of good resources listed on the last slide
+
+### We'll Do It Live: Underhanded Debugging in Production with Saimon Sharif
+
+- Look for cacheing issues, e.g. bypass the CDN and see if the issue still exists
+- Client-side JavaScript - include source maps to make it easier to view production source code
+- Add breakpoints to your code, check out conditional breakpoints [https://medium.com/statuscode/conditional-breakpoints-in-chrome-are-awesome-31933ea97a15](https://medium.com/statuscode/conditional-breakpoints-in-chrome-are-awesome-31933ea97a15)
+- Inspecting payloads, state, or large sets of props — take it out of chrome (`copy(JSON.stringify(data))`) and then manipulate/inspect it from files on the command-line (e.g. using [https://www.npmjs.com/package/json-diff](https://www.npmjs.com/package/json-diff))
+- Replay specific requests with cURL commands that you've copied out of the Chrome console. Editing cURL commands is easier with a tool like postman.
+- Think you're experiencing a race condition — write a script that makes a bunch of simultaneous requests to reproduce it (do this with caution in prod, perhaps start with staging or QA).
+- Sketchy Tricks: use `tcpdump` to analyze requests to your production app (make sure you have permission and you aren't violating compliance)
+
+### React 360 with Tae'lur Alexis
+
+- Facebook: ReactVR —> React 360 [https://facebook.github.io/react-360/](https://facebook.github.io/react-360/)
+
+### State Management with React Hooks with Eric Bishard @httpjunkie
+
+- eslint plugin to help you not misuse/abuse hooks [https://www.npmjs.com/package/eslint-plugin-react-hooks](https://www.npmjs.com/package/eslint-plugin-react-hooks)
+- Introducing Hooks [https://reactjs.org/docs/hooks-intro.html](https://reactjs.org/docs/hooks-intro.html)
+- For managing more complex state than a single value, `useReducer` [https://www.robinwieruch.de/react-usereducer-hook/](https://www.robinwieruch.de/react-usereducer-hook/)
+
+### Moving to React at CodePen with Cassidy Williams
+
+- Rails/jQuery —> React+Redux —> React+Apollo+GraphQL
+- Taking a very incremental approach where there are Rails/jQuery + sections of React all on the same page, all of these React pieces communicate together through a global Apollo thing.
+- Testing with jest and cypress [https://www.cypress.io/](https://www.cypress.io/)
+
+### React to Web Workers with Tyler Clark
+
+- Dedicated & shared workers = 'web workers'
+- Service workers = 'service workers'
+- Workers basically run scripts in anther thread, can communicate with client app, and can act as a sort of middleware interacting between client and server.
+- react-app-rewired — alternative scripts for create-react-app that'll allow web workers [https://github.com/timarney/react-app-rewired](https://github.com/timarney/react-app-rewired)
+
+### React Briefing with Tyler McGinnis
+
+- Alternative title: "Why React Hooks?"
+- Covered a lot of history of React and how we got to where we are.
+- Interesting point about moving from React's lifecycle callbacks to the `useEffect` hook — it is a matter of shifting to a mindset of *synchronization*.
