@@ -52,7 +52,7 @@ const IndexPage = ({
         <h1>Code Words</h1>
         <p>
           I&apos;m Josh Branchaud, a Senior Software Developer and Consultant focused primarily on web development,
-          specializing in Ruby on Rails, React, and PostgreSQL.
+          specializing in React, Ruby on Rails, and PostgreSQL.
         </p>
         {/* <Link to="/contact">
           <Button big>
