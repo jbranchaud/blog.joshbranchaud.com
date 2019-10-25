@@ -9,6 +9,41 @@ import { Layout, Wrapper, Header, Subline, SEO, PrevNext } from '../components'
 import config from '../../config'
 import headerImage from '../../static/images/header.png'
 
+const NewsletterForm = () => (
+  <form
+    style={{ border: '1px solid #ccc', padding: 3, textAlign: 'center', marginTop: '3rem' }}
+    action="https://tinyletter.com/jbranchaud"
+    method="post"
+    target="popupwindow"
+    onSubmit="window.open('https://tinyletter.com/jbranchaud', 'popupwindow', 'scrollbars=yes,width=800,height=600');return true"
+  >
+    <div style={{ display: 'flex', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', width: '80%' }}>
+        <p>Did you enjoy this post? Get emails from me with my latest posts by signing up for my newsletter.</p>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '1rem' }}>
+          <label id="tlemail" htmlFor="tlemail" style={{ marginBottom: 0, marginRight: '0.5rem' }}>
+            Email
+          </label>
+          <input
+            placeholder="you@rock.com"
+            type="text"
+            style={{ width: '100%', maxWidth: 200 }}
+            name="email"
+            id="tlemail"
+          />
+          <input type="hidden" defaultValue={1} name="embed" />
+          <button
+            type="submit"
+            style={{ borderRadius: '0.5rem', border: 'none', background: '#d02f77', color: '#fff', height: '1.7rem' }}
+          >
+            Subscribe
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+)
+
 const Content = styled.article`
   grid-column: 2;
   box-shadow: 0 4px 120px rgba(0, 0, 0, 0.1);
@@ -87,6 +122,7 @@ const Post = ({ pageContext: { slug, prev, next }, data: { mdx: postNode } }) =>
           <PostContent>
             <MDXRenderer>{postNode.code.body}</MDXRenderer>
           </PostContent>
+          <NewsletterForm />
           <PrevNext prev={prev} next={next} />
         </Content>
       </Wrapper>
