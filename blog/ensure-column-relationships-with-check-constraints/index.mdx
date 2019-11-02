@@ -1,0 +1,109 @@
+---
+date: "2019-11-02"
+title: "Enforce Column Relationships With Check Constraints"
+categories:
+  - PostgreSQL
+---
+
+I'm always looking for ways to keep data consistent. Or rather, for the
+database to ensure that its data is consistent.
+[PostgreSQL](https://www.postgresql.org/) has a number of tools for this. Great
+places to start are consistent use of `not null`s and foreign key constraints.
+Sometimes you end up in, for lack of a better word, weird situations that call
+for a more creative approach. [Check
+constraints](http://www.postgresqltutorial.com/postgresql-check-constraint/)
+are a versatile tool. They may be just what you need.
+
+## A Scenario
+
+What if data represented by two columns only made sense when both columns were
+set? Otherwise, you wouldn't want either of them set. If you find yourself in
+this situation, you can enforce this column relationship with a check
+constraint.
+
+Consider this books table:
+
+```sql
+                                   Table "public.books"
+      Column      |       Type        |                     Modifiers
+------------------+-------------------+----------------------------------------------------
+ id               | integer           | not null default nextval('books_id_seq'::regclass)
+ title            | character varying | not null
+ author           | character varying | not null
+ publication_year | integer           |
+ page_count       | integer           |
+Indexes:
+    "books_pkey" PRIMARY KEY, btree (id)
+```
+
+For books that are still being written, it doesn't make sense to list a
+`publication_year` or `page_count`. For that reason, those columns are
+nullable. However, once a book is ready for publication, both should be set. It
+would be _inconsistent_ for a book record to have a page count and no
+publication year. This can be enforced with a check constraint and some clever
+type coercion.
+
+## A Solution
+
+```sql
+alter table books
+  add constraint ensure_year_and_page_count_are_set
+  check (
+    (
+      (publication_year is not null)::integer +
+      (page_count is not null)::integer
+    ) != 1
+  );
+```
+
+If `publication_year` is `null`, then the first part of the check will resolve
+to `false` which, when coerced to an integer, will be `0`. If it isn't `null`,
+then `true` which becomes `1`.
+
+These are then added up. Here is a breakdown of the different possibilities:
+
+```
+| year   | count  | sum |
++--------+--------+-----+
+| null   | null   | 0   |
+| null   | value  | 1   |
+| value  | null   | 1   |
+| value  | value  | 2   |
+```
+
+This brings us to the last part of the check constraint. The sum gets compared
+to `1`. As long as the sum doesn't equal `1` we consider the constraint to be
+respected. That's because either both values are `null` (not yet set to
+anything) or both values have been set. Nothing in between.
+
+```sql
+insert into books (title, author) values ('Fledgling', "Octavia Butler");
+-- ✅ both publication_year and page_count are null
+
+update books set publication_year = 2005 where id = 1;
+-- ❌ new row for relation "books" violates
+--    check constraint "ensure_year_and_page_count_are_set"
+
+update books set publication_year = 2005, page_count = 352 where id = 1;
+-- ✅ both publication_year and page_count are set
+```
+
+## Another Solution
+
+I'll admit this example is a bit contrived. I've seen the core elements of this
+example come up in realistic contexts. As developers, we are constantly
+balancing competing requirements. If the requirements dictate it, the above may
+be a good solution for you. In any case, it is definitely worth know that
+check constraints can be used in this way.
+
+If requirements don't dictate, I'd encourage moving toward a solution that
+involves `not null`s and foreign key constraints. For instance, if two or more
+columns are dependent in the way I described above, they likely belong in their
+own table. The domain of the problem is leading you here.
+
+Split those columns out into an appropriately named table, make them
+non-nullable, and then slap a foreign key constraint on that relationship. This
+is great because if both are `null`, then you don't have a column at all. If
+they are set, then you create a record with consistency of the data enforced in
+a more direct way; neither of the values can be null and the foreign key will
+never be orphaned.
